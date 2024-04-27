@@ -5,11 +5,11 @@
 	"name": "Easy Mail",
 	"description": "A mod to add an easy-to-use mail system for your servers.",
 	"authors": [
-		"Me!"
+		"Entropy159"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/Entropy159/Easy-Mail"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/easy-mail/icon.png",
