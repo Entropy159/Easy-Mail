@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "easy-mail",
+	"version": "${version}",
+	"name": "Easy Mail",
+	"description": "A mod to add an easy-to-use mail system for your servers.",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/easy-mail/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.entropy.EasyMail"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.15.10",
+		"minecraft": "~1.20.4",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
