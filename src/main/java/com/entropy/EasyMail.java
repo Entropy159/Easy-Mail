@@ -64,7 +64,7 @@ public class EasyMail implements ModInitializer {
 		    		return Command.SINGLE_SUCCESS;
 		    	}
 		    	Mailbox mailbox = getPlayerMailbox(source.getServer(), player);
-		    	mailbox.receiveMessage(source.getServer(), source.getName(), player);
+		    	mailbox.receiveMessage(source.getServer(), source.getName(), getString(arguments, "message"));
 		    	source.sendMessage(Text.literal("Message sent to "+player).formatted(Formatting.GREEN));
 		    	return Command.SINGLE_SUCCESS;
 			}))));
