@@ -34,7 +34,9 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
 public class EasyMail implements ModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger("easy-mail");
+	public static String playerName = "@player";
 
+	@SuppressWarnings("resource")
 	@Override
 	public void onInitialize() {
 		
@@ -69,6 +71,20 @@ public class EasyMail implements ModInitializer {
 		    	return Command.SINGLE_SUCCESS;
 			}))));
 		});
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			dispatcher.register(literal("mailall").requires(source -> source.hasPermissionLevel(4)).then(argument("message", greedyString()).executes(arguments -> {
+		    	ServerCommandSource source = arguments.getSource();
+		    	String message = getString(arguments, "message");
+		    	Data.getServerState(source.getServer()).broadcasts.add(new Broadcast(source.getName(), message));
+		    	for(Mailbox mailbox : Data.getServerState(source.getServer()).mail.values()) {
+		    		if(mailbox.owner != source.getName()) {
+				    	mailbox.receiveMessage(source.getServer(), source.getName(), message.replaceAll(playerName, mailbox.owner));
+		    		}
+		    	}
+		    	source.sendMessage(Text.literal("Message sent to everyone").formatted(Formatting.GREEN));
+		    	return Command.SINGLE_SUCCESS;
+			})));
+		});
 		
 	}
 	
@@ -77,6 +93,9 @@ public class EasyMail implements ModInitializer {
 		if(Data.getServerState(server).mail.containsKey(player)) {
 			mail = Data.getServerState(server).mail.get(player);
 		} else {
+			for(Broadcast broadcast : Data.getServerState(server).broadcasts) {
+				mail.mail.add(new MailEntry(broadcast.from, player, broadcast.message.replaceAll(playerName, player)));
+			}
 			Data.getServerState(server).mail.put(player, mail);
 		}
 		return mail;
@@ -149,8 +168,19 @@ public class EasyMail implements ModInitializer {
 
 	}
 	
+	public static class Broadcast {
+		public String from;
+		public String message;
+		
+		public Broadcast(String sender, String text) {
+			from = sender;
+			message = text;
+		}
+	}
+	
 	public static class Data extends PersistentState {
 	    public HashMap<String, Mailbox> mail = new HashMap<String, Mailbox>();
+	    public ArrayList<Broadcast> broadcasts = new ArrayList<Broadcast>();
 		
 		@Override
 		public NbtCompound writeNbt(NbtCompound nbt) {
@@ -165,9 +195,17 @@ public class EasyMail implements ModInitializer {
 					entry.putString("message", e.message);
 					mail.put("mail"+i, entry);
 				}
-				mails.put(player, mail);
+				mails.put("mail", mail);
 			});
 			nbt.put("mails", mails);
+			NbtCompound bc = new NbtCompound();
+			for(int i = 0; i < broadcasts.size(); i++) {
+				NbtCompound broadcast = new NbtCompound();
+				broadcast.putString("from", broadcasts.get(i).from);
+				broadcast.putString("message", broadcasts.get(i).message);
+				bc.put("broadcast"+i, broadcast);
+			}
+			nbt.put("broadcasts", bc);
 			return nbt;
 		}
 		
@@ -176,13 +214,18 @@ public class EasyMail implements ModInitializer {
 			NbtCompound mails = tag.getCompound("mails");
 			mails.getKeys().forEach(key -> {
 				Mailbox box = new Mailbox(key);
-				NbtCompound mail = mails.getCompound(key);
+				NbtCompound mail = mails.getCompound("mail");
 				mail.getKeys().forEach(m -> {
 					NbtCompound c = mail.getCompound(m);
 					MailEntry entry = new MailEntry(c.getString("from"), c.getString("to"), c.getString("message"));
 					box.mail.add(entry);
 				});
 				data.mail.put(key, box);
+			});
+			NbtCompound bc = tag.getCompound("broadcasts");
+			bc.getKeys().forEach(key -> {
+				NbtCompound broadcast = bc.getCompound(key);
+				data.broadcasts.add(new Broadcast(broadcast.getString("from"), broadcast.getString("message")));
 			});
 			return data;
 		}
