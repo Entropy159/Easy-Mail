@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,8 +76,9 @@ public class EasyMail implements ModInitializer {
 			dispatcher.register(literal("mailall").requires(source -> source.hasPermissionLevel(4)).then(argument("message", greedyString()).executes(arguments -> {
 		    	ServerCommandSource source = arguments.getSource();
 		    	String message = getString(arguments, "message");
-		    	Data.getServerState(source.getServer()).broadcasts.add(new Broadcast(source.getName(), message));
-		    	for(Mailbox mailbox : Data.getServerState(source.getServer()).mail.values()) {
+		    	Data data = Data.getServerState(source.getServer());
+		    	data.broadcasts.add(new Broadcast(source.getName(), message, data.broadcasts.size()));
+		    	for(Mailbox mailbox : data.mail.values()) {
 		    		if(mailbox.owner != source.getName()) {
 				    	mailbox.receiveMessage(source.getServer(), source.getName(), message.replaceAll(playerName, mailbox.owner));
 		    		}
@@ -129,6 +131,7 @@ public class EasyMail implements ModInitializer {
 		
 		public String owner;
 		public ArrayList<MailEntry> mail = new ArrayList<MailEntry>();
+		public ArrayList<Integer> readBroadcasts = new ArrayList<Integer>();
 		
 		public Mailbox(String player) {
 			owner = player;
@@ -148,6 +151,10 @@ public class EasyMail implements ModInitializer {
 			for(MailEntry entry : mail) {
 				ServerPlayerEntity player = world.getPlayerManager().getPlayer(owner);
 				player.sendMessage(Text.literal("From "+entry.from+": "+entry.message));
+			}
+			readBroadcasts.clear();
+			for(int i = 0; i < Data.getServerState(world).broadcasts.size(); i++) {
+				readBroadcasts.add(i);
 			}
 			mail.clear();
 		}
@@ -171,10 +178,12 @@ public class EasyMail implements ModInitializer {
 	public static class Broadcast {
 		public String from;
 		public String message;
+		public int id = 0;
 		
-		public Broadcast(String sender, String text) {
+		public Broadcast(String sender, String text, int num) {
 			from = sender;
 			message = text;
+			id = num;
 		}
 	}
 	
@@ -187,6 +196,7 @@ public class EasyMail implements ModInitializer {
 			NbtCompound mails = new NbtCompound();
 			mail.forEach((player, box) -> {
 				NbtCompound mail = new NbtCompound();
+				NbtCompound p = new NbtCompound();
 				for(int i = 0; i < box.mail.size(); i++) {
 					NbtCompound entry = new NbtCompound();
 					MailEntry e = box.mail.get(i);
@@ -195,7 +205,13 @@ public class EasyMail implements ModInitializer {
 					entry.putString("message", e.message);
 					mail.put("mail"+i, entry);
 				}
-				mails.put("mail", mail);
+				p.put("mail", mail);
+				int[] read = new int[box.readBroadcasts.size()];
+				for(int i = 0; i < box.readBroadcasts.size(); i++) {
+					read[i] = box.readBroadcasts.get(i);
+				}
+				p.putIntArray("readBroadcasts", read);
+				mails.put(player, p);
 			});
 			nbt.put("mails", mails);
 			NbtCompound bc = new NbtCompound();
@@ -203,7 +219,8 @@ public class EasyMail implements ModInitializer {
 				NbtCompound broadcast = new NbtCompound();
 				broadcast.putString("from", broadcasts.get(i).from);
 				broadcast.putString("message", broadcasts.get(i).message);
-				bc.put("broadcast"+i, broadcast);
+				broadcast.putInt("id", broadcasts.get(i).id);
+				bc.put("broadcast"+broadcasts.get(i).id, broadcast);
 			}
 			nbt.put("broadcasts", bc);
 			return nbt;
@@ -214,18 +231,23 @@ public class EasyMail implements ModInitializer {
 			NbtCompound mails = tag.getCompound("mails");
 			mails.getKeys().forEach(key -> {
 				Mailbox box = new Mailbox(key);
-				NbtCompound mail = mails.getCompound("mail");
+				NbtCompound p = mails.getCompound(key);
+				NbtCompound mail = p.getCompound("mail");
 				mail.getKeys().forEach(m -> {
 					NbtCompound c = mail.getCompound(m);
 					MailEntry entry = new MailEntry(c.getString("from"), c.getString("to"), c.getString("message"));
 					box.mail.add(entry);
 				});
+				int[] read = p.getIntArray("readBroadcasts");
+				for(int i : read) {
+					box.readBroadcasts.add(i);
+				}
 				data.mail.put(key, box);
 			});
 			NbtCompound bc = tag.getCompound("broadcasts");
 			bc.getKeys().forEach(key -> {
 				NbtCompound broadcast = bc.getCompound(key);
-				data.broadcasts.add(new Broadcast(broadcast.getString("from"), broadcast.getString("message")));
+				data.broadcasts.add(new Broadcast(broadcast.getString("from"), broadcast.getString("message"), broadcast.getInt("id")));
 			});
 			return data;
 		}
