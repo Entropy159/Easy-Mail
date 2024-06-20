@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.command.CommandSource;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -23,7 +24,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,10 +34,10 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
 public class EasyMail implements ModInitializer {
+	
     public static final Logger LOGGER = LoggerFactory.getLogger("easy-mail");
 	public static String playerName = "@player";
 
-	@SuppressWarnings("resource")
 	@Override
 	public void onInitialize() {
 		
@@ -192,7 +192,7 @@ public class EasyMail implements ModInitializer {
 	    public ArrayList<Broadcast> broadcasts = new ArrayList<Broadcast>();
 		
 		@Override
-		public NbtCompound writeNbt(NbtCompound nbt) {
+		public NbtCompound writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup) {
 			NbtCompound mails = new NbtCompound();
 			mail.forEach((player, box) -> {
 				NbtCompound mail = new NbtCompound();
@@ -226,7 +226,7 @@ public class EasyMail implements ModInitializer {
 			return nbt;
 		}
 		
-		public static Data createFromNbt(NbtCompound tag) {
+		public static Data createFromNbt(NbtCompound tag, RegistryWrapper.WrapperLookup registryLookup) {
 			Data data = new Data();
 			NbtCompound mails = tag.getCompound("mails");
 			mails.getKeys().forEach(key -> {
